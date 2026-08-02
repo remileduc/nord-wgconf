@@ -1,0 +1,66 @@
+# Keep data/ current.
+#
+# The page is static and api.nordvpn.com sends no CORS headers, so the server
+# list has to be baked into the repo (see README, "How the server list gets
+# here"). This job re-bakes it weekly and commits the result; Pages redeploys
+# from the branch on push.
+#
+# The data is committed rather than published as an artifact on purpose:
+# artifact downloads require an authenticated token even on a public repo, are
+# ZIPs, and expire -- none of which client-side JS on a dependency-free page can
+# deal with, and fetching one would break the "no network calls other than
+# same-origin data/*.json" promise the README asks readers to verify.
+
+name: Refresh server data
+
+on:
+  schedule:
+    # Mondays, 04:17 UTC. Off the hour because everyone else schedules on it.
+    - cron: '17 4 * * 1'
+  workflow_dispatch:        # run it by hand after an API change or a failed run
+
+permissions:
+  contents: write           # the only thing this needs: pushing data/
+
+concurrency:
+  group: refresh-data
+  cancel-in-progress: false # never interrupt a run mid-commit
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      # curl and jq are both preinstalled on ubuntu-latest; build-data.sh checks
+      # for them anyway and dies with a clear message if that ever changes.
+      - name: Rebuild data/
+        run: ./build-data.sh
+
+      # build-data.sh is atomic: on a truncated, empty, or shape-changed
+      # response it exits non-zero having left data/ untouched, so a failed run
+      # turns the Actions tab red and the site keeps serving the last good
+      # snapshot. Nothing below runs in that case.
+
+      - name: Commit if anything changed
+        run: |
+          set -euo pipefail
+
+          # meta.json always differs -- it carries a fresh generated_at -- so it
+          # cannot be the thing that decides whether to commit, or every run
+          # would push a no-op. The server list is the payload; the trimmed
+          # record shape holds no volatile fields (load is deliberately dropped),
+          # so most weeks this is genuinely unchanged and we push nothing.
+          if git diff --quiet -- data/servers.json data/countries.json; then
+            echo "server list unchanged; not committing"
+            exit 0
+          fi
+
+          summary="$(jq -r '"\(.servers) servers, \(.countries) countries, \(.generated_at)"' \
+            data/meta.json)"
+
+          git config user.name  'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add data/
+          git commit -m 'data: refresh server list' -m "$summary"
+          git push
