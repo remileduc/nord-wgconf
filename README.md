@@ -3,6 +3,8 @@
 A static page that builds a WireGuard configuration for NordVPN. No backend, no
 build step, no dependencies. Deployable to GitHub Pages as-is.
 
+**You can access it here: <https://remileduc.github.io/nord-wgconf/>**
+
 ## Why this exists
 
 NordVPN publishes OpenVPN config files but not WireGuard ones, even though their
