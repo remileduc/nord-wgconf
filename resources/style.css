@@ -126,7 +126,7 @@ input[type=text]:focus, input[type=password]:focus {
 
 .server {
   display: grid;
-  grid-template-columns: auto 1fr auto auto auto;
+  grid-template-columns: auto 1fr auto auto;
   gap: .75rem; align-items: center;
   padding: .6rem .75rem;
   background: var(--panel2);
@@ -140,7 +140,6 @@ input[type=text]:focus, input[type=password]:focus {
 .server .name  { font-family: var(--mono); font-size: .9rem; }
 .server .where { color: var(--dim); font-size: .85rem; }
 .server .ip    { font-family: var(--mono); font-size: .8rem; color: var(--dim); }
-.server .load  { font-variant-numeric: tabular-nums; font-size: .85rem; color: var(--dim); }
 .server .tag {
   font-size: .7rem; font-weight: 700; letter-spacing: .04em;
   padding: .1rem .4rem; border-radius: 3px;

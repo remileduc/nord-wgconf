@@ -1,3 +1,7 @@
+# Claude stuff
+.claude/
+CLAUDE.md
+
 # Generated WireGuard configs contain a private key. Never commit one.
 *.conf
 *.key

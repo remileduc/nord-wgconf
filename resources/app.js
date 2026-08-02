@@ -242,13 +242,28 @@ function renderCountryHint() {
     hint.textContent = `${c.count} servers, ${c.p2p} allow P2P.`;
   } else {
     // Honest about the limitation: NordVPN's real "recommended" endpoint scores
-    // by proximity too, and we cannot call it from a static page.
-    hint.textContent = 'No country selected — showing the least-loaded servers worldwide, ' +
+    // by proximity and live load, and we cannot call it from a static page.
+    hint.textContent = 'No country selected — showing servers picked at random worldwide, ' +
       'which may be far from you.';
   }
 }
 
 /* -------------------------------------------------------------- servers -- */
+
+/* Take n servers at random.
+ *
+ * Partial Fisher-Yates: only the first n positions need shuffling, so this does
+ * not walk all 8,500 records. The sample is then sorted by hostname so the list
+ * reads in a sensible order rather than the order chance produced. */
+function sample(pool, n) {
+  const a = pool.slice();
+  const k = Math.min(n, a.length);
+  for (let i = 0; i < k; i++) {
+    const j = i + Math.floor(Math.random() * (a.length - i));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a.slice(0, k).sort((x, y) => x.h.localeCompare(y.h));
+}
 
 function renderServers() {
   const box = document.getElementById('servers');
@@ -256,7 +271,7 @@ function renderServers() {
   if (state.country) pool = pool.filter((s) => s.c === state.country);
   if (document.getElementById('p2p').checked) pool = pool.filter((s) => s.p);
 
-  const top = pool.slice().sort((a, b) => a.l - b.l || a.h.localeCompare(b.h)).slice(0, MAX_SERVERS);
+  const top = sample(pool, MAX_SERVERS);
 
   if (!top.length) {
     box.innerHTML = '<p class="hint">No servers match. Try clearing the P2P filter.</p>';
@@ -274,11 +289,10 @@ function renderServers() {
        <span class="name">${esc(s.h)}</span>
        <span class="where">${esc(s.n)}, ${esc(s.c)}</span>
        <span class="ip">${esc(s.s)}</span>
-       <span class="load" title="Load at snapshot time">${s.l}%</span>
        ${s.p ? '<span class="tag">P2P</span>' : ''}`;
     box.append(el);
   }
-  // Preselect the least loaded so the page is useful with one click.
+  // Preselect one so the page is useful with a single click.
   const first = box.querySelector('input[type=radio]');
   if (first) { first.checked = true; state.server = top[0]; }
   build();

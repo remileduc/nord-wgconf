@@ -22,7 +22,7 @@ WG='wireguard_udp'
 # loudly rather than silently shipping a truncated list.
 LIMIT=10000
 
-ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 OUT="$ROOT/data"
 mkdir -p "$OUT"
 
@@ -74,7 +74,7 @@ fi
 #
 #   h = hostname          s = station (endpoint IP -- what goes in Endpoint=)
 #   k = server public key  c = ISO country code     n = city
-#   p = allows P2P         l = load percentage (volatile; see meta.generated_at)
+#   p = allows P2P
 say '==> trimming'
 jq -c '
   [ .[]
@@ -86,8 +86,7 @@ jq -c '
                | .metadata[] | select(.name == "public_key") | .value ][0] ),
         c: .locations[0].country.code,
         n: .locations[0].country.city.name,
-        p: ( [ .groups[].identifier ] | index("legacy_p2p") != null ),
-        l: .load }
+        p: ( [ .groups[].identifier ] | index("legacy_p2p") != null ) }
     | select(.k != null and .c != null) ]
   | sort_by(.c, .n, .h)
 ' "$tmp/raw.json" > "$tmp/servers.json"
@@ -119,7 +118,7 @@ jq -c --slurpfile names "$tmp/countries-raw.json" '
 say "    countries: $(jq 'length' "$tmp/countries.json")"
 
 # --- 5. metadata ------------------------------------------------------------
-# generated_at is shown in the UI. Baked data means load figures are only as
+# generated_at is shown in the UI. Baked data means the server list is only as
 # fresh as this timestamp, and users deserve to know that.
 jq -n \
 	--arg at "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \

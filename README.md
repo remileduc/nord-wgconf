@@ -124,8 +124,15 @@ Since the browser cannot call the API, the data is baked in at build time.
 Action commits the result. The page reads static JSON from its own origin, so
 CORS never enters into it.
 
+It is *committed* rather than published as a build artifact because artifacts
+are not reachable from client-side JavaScript: downloading one needs an
+authenticated token even on a public repo, arrives as a ZIP, and expires. Going
+that route would mean shipping an unzip library and calling a third-party host —
+breaking both the no-dependencies rule and the promise below that the only
+`fetch()` calls are same-origin.
+
 ```
-data/servers.json     8,559 servers, ~1.1 MB (~83 KB gzipped)
+data/servers.json     8,558 servers, ~1.1 MB (~68 KB gzipped)
 data/countries.json   149 countries, derived from servers.json
 data/meta.json        snapshot timestamp and counts
 ```
@@ -133,15 +140,21 @@ data/meta.json        snapshot timestamp and counts
 Trimmed record shape:
 
 ```json
-{"h":"fr884.nordvpn.com","s":"178.249.212.154","k":"Vkrb…Bk=","c":"FR","n":"Marseille","p":true,"l":12}
+{"h":"fr884.nordvpn.com","s":"178.249.212.154","k":"Vkrb…Bk=","c":"FR","n":"Marseille","p":true}
 ```
 
 `h`ostname, `s`tation (endpoint IP), public `k`ey, `c`ountry, city `n`ame,
-`p`2p allowed, `l`oad.
+`p`2p allowed.
 
-**Load figures are a snapshot**, as fresh as `meta.generated_at` and no fresher.
+**Server load is deliberately not included.** It changes by the minute, so a
+weekly snapshot of it would be decoration rather than information.
+
+With nothing meaningful to rank by, the page shows **five servers picked at
+random** from your filtered selection; reload for a different five. Ranking by
+name instead would hand every visitor the same five and pile them onto those.
+
 Endpoint IPs and public keys change slowly — there are only ~224 distinct public
-keys across all 8,559 servers — so a stale snapshot is unlikely to break a
+keys across all 8,558 servers — so a stale snapshot is unlikely to break a
 config. If it does, the symptom is a tunnel that comes up and never handshakes.
 
 For a genuinely live pick, straight from NordVPN with current load and their own
@@ -170,12 +183,17 @@ To refresh the data yourself (needs `curl` and `jq`):
 ## Deploying
 
 Push to GitHub, then Settings → Pages → deploy from branch, root. The workflow
-in `.github/workflows/refresh-data.yml` keeps `data/` current.
+in `.github/workflows/refresh-data.yml` keeps `data/` current: it runs every
+Monday (and on demand via **Run workflow**), rebuilds `data/`, and commits only
+if the server list actually changed. Pages redeploys on that push.
 
-Two caveats:
+Three caveats:
 
 - Scheduled workflows are **disabled after 60 days of repository inactivity**.
   If the data goes stale, check that first.
+- A green run that says *"server list unchanged; not committing"* is the normal
+  outcome, not a failure. `meta.json`'s timestamp is not on its own a reason to
+  push a megabyte.
 - `build-data.sh` exits non-zero on a truncated, empty, or shape-changed
   response and only writes `data/` once all checks pass. A failed run leaves the
   previous good snapshot in place and turns the Actions tab red, rather than
