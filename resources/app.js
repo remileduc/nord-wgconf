@@ -99,9 +99,11 @@ function applyPrefs() {
 async function load() {
   const metaLine = document.getElementById('meta');
   try {
+    // cache: 'no-cache' means "revalidate before using", not "do not cache"
+    // that is 'no-store'.
     const [servers, countries, meta] = await Promise.all(
       ['data/servers.json', 'data/countries.json', 'data/meta.json'].map(async (p) => {
-        const r = await fetch(p);
+        const r = await fetch(p, { cache: 'no-cache' });
         if (!r.ok) throw new Error(`${p}: HTTP ${r.status}`);
         return r.json();
       })
