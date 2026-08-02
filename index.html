@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>NordVPN WireGuard config generator</title>
+<meta name="description" content="Generate a WireGuard configuration for NordVPN. Runs entirely in your browser; your key is never sent anywhere.">
+<link rel="stylesheet" href="resources/style.css">
+</head>
+<body>
+
+<header>
+  <h1>NordVPN &rarr; WireGuard config</h1>
+  <p class="sub">
+    NordVPN does not publish WireGuard config files, but every piece needed to build
+    one is retrievable. This page assembles it for you.
+  </p>
+</header>
+
+<main>
+
+  <!-- The trust claim is the first thing on the page, because it is the thing a
+       visitor most needs to decide before typing anything. It is verifiable:
+       there is no backend to send anything to. -->
+  <section class="notice" aria-label="Privacy">
+    <h2>Everything happens in your browser</h2>
+    <p>
+      This is a static page with no server behind it. Your private key is never
+      transmitted, stored, or logged &mdash; it never leaves this tab.
+      <strong>You will never be asked for your NordVPN account token here.</strong>
+      Step&nbsp;2 shows you a command to run on your own machine instead.
+    </p>
+  </section>
+
+  <!-- ---------- step 1: server ---------- -->
+  <section>
+    <h2><span class="step">1</span> Choose a server</h2>
+
+    <div class="row">
+      <div class="field">
+        <label for="country">Country</label>
+        <!-- Custom combobox rather than <datalist>: datalist cannot restrict input
+             to real options, and browsers disagree about how it renders. -->
+        <div class="combo">
+          <input id="country" type="text" role="combobox" autocomplete="off"
+                 aria-expanded="false" aria-controls="country-list" aria-autocomplete="list"
+                 placeholder="Type to search&hellip;">
+          <button type="button" id="country-clear" class="clear" aria-label="Clear country">&times;</button>
+          <ul id="country-list" role="listbox" hidden></ul>
+        </div>
+        <p class="hint" id="country-hint"></p>
+      </div>
+
+      <div class="field narrow">
+        <label class="check">
+          <input type="checkbox" id="p2p">
+          <span>P2P servers only</span>
+        </label>
+        <p class="hint">Not every server permits torrenting.</p>
+      </div>
+    </div>
+
+    <div id="servers" class="servers" role="radiogroup" aria-label="Server"></div>
+  </section>
+
+  <!-- ---------- step 2: private key ---------- -->
+  <section>
+    <h2><span class="step">2</span> Get your private key</h2>
+    <p>
+      Generate an access token at
+      <a href="https://my.nordaccount.com/dashboard/nordvpn/"
+         target="_blank" rel="noopener noreferrer">NordAccount &rarr; Generate access token</a>,
+      then run this on your own machine and paste the result below.
+    </p>
+
+    <div class="cmd">
+      <code id="curl-cmd">curl -s -u token:YOUR_TOKEN https://api.nordvpn.com/v1/users/services/credentials | jq -r .nordlynx_private_key</code>
+      <button type="button" data-copy="curl-cmd">Copy</button>
+    </div>
+
+    <p class="warn">
+      That token is a credential for your whole NordVPN account. Run the command
+      yourself &mdash; never paste the token into a website, including this one.
+      The key it returns is 44 characters and ends with <code>=</code>.
+    </p>
+
+    <!-- A real <form> with a real submit button. Browsers only offer to save a
+         credential on a form-submission event, so a bare <input> in a <div> is
+         never captured no matter what autocomplete says. The submit handler
+         calls preventDefault(), which stops the navigation but not the capture. -->
+    <form id="key-form">
+      <div class="field">
+        <label for="privkey">Private key</label>
+        <input id="privkey" name="privkey" type="password" autocomplete="current-password"
+               spellcheck="false" placeholder="44-character base64 key">
+        <button type="button" id="reveal" class="reveal">Show</button>
+        <p class="hint" id="key-hint"></p>
+      </div>
+
+      <div class="key-actions">
+        <button type="submit" id="remember-key">Ask browser to remember</button>
+        <span class="hint">
+          Offers the key to your browser's password manager. In Firefox, saved
+          logins are recoverable from your profile directory by any process
+          running as you <strong>unless a Primary Password is set</strong>.
+          Set one first, or use a dedicated password manager.
+        </span>
+      </div>
+    </form>
+  </section>
+
+  <!-- ---------- step 3: options ---------- -->
+  <section>
+    <h2><span class="step">3</span> Options</h2>
+    <details>
+      <summary>Advanced &mdash; defaults are fine for normal use</summary>
+      <div class="opts">
+        <label class="check">
+          <input type="checkbox" id="opt-dns" checked>
+          <span>Use NordVPN DNS <code>103.86.96.100</code>, <code>103.86.99.100</code>
+            <em>Without this your existing resolver keeps seeing every domain you visit.</em></span>
+        </label>
+        <label class="check">
+          <input type="checkbox" id="opt-v6" checked>
+          <span>Block IPv6 (add <code>::/0</code> to AllowedIPs)
+            <em>NordVPN carries no IPv6, so working IPv6 bypasses the tunnel. This
+              black-holes it instead, at the cost of breaking IPv6-only sites.</em></span>
+        </label>
+        <label class="check">
+          <input type="checkbox" id="opt-keepalive" checked>
+          <span>PersistentKeepalive = 25
+            <em>Keeps the tunnel alive through NAT and stateful firewalls.</em></span>
+        </label>
+        <label class="check">
+          <input type="checkbox" id="opt-table">
+          <span>Table = off
+            <em>Stops wg-quick installing any routes. Only for split tunnelling, where
+              you manage <code>ip rule</code> yourself. <strong>Leave this off unless you
+              know you need it</strong> &mdash; the tunnel will connect but route nothing.</em></span>
+        </label>
+
+        <div class="opts-actions">
+          <button type="button" id="forget-prefs">Forget saved settings</button>
+          <span class="hint" id="prefs-status">
+            Your country and these checkboxes are remembered in this browser.
+            Your private key is never saved &mdash; see the README for why.
+          </span>
+        </div>
+      </div>
+    </details>
+  </section>
+
+  <!-- ---------- step 4: output ---------- -->
+  <section>
+    <h2><span class="step">4</span> Your configuration</h2>
+    <pre id="config" class="config" aria-live="polite">Choose a server and paste your private key.</pre>
+    <div class="actions">
+      <button type="button" id="copy-config" disabled>Copy</button>
+      <button type="button" id="download" disabled>Download wg0.conf</button>
+    </div>
+    <p class="warn" id="post-download">
+      The downloaded file contains your private key and lands in your Downloads
+      folder readable by any process running as you. Lock it down as you move it:
+      <code>sudo install -m 600 -o root ~/Downloads/wg0.conf /etc/wireguard/wg0.conf</code>
+      then <code>sudo wg-quick up wg0</code>.
+    </p>
+  </section>
+
+</main>
+
+<footer>
+  <p id="meta">Loading server data&hellip;</p>
+  <p>
+    Server data is a snapshot committed to this repository, refreshed on a schedule.
+    Load figures are only as current as that snapshot. For a live pick straight from
+    NordVPN, see the command in the README.
+  </p>
+  <p>
+    Source code available on the
+    <a href="https://github.com/remileduc/nord-wgconf">Github repository</a>.
+  </p>
+</footer>
+
+<script src="resources/app.js"></script>
+</body>
+</html>

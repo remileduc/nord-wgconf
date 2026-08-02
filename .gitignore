@@ -1,0 +1,9 @@
+# Generated WireGuard configs contain a private key. Never commit one.
+*.conf
+*.key
+
+# data/ IS committed on purpose -- it is what makes the static page work.
+# (listed here only so nobody "helpfully" adds it later)
+
+.DS_Store
+*.swp
