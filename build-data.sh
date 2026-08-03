@@ -40,7 +40,8 @@ trap 'rm -rf "$tmp"' EXIT
 # Ask first, so we can tell "the API returned fewer" from "our limit truncated".
 say '==> asking how many WireGuard servers exist'
 expected="$(curl -sS --max-time 30 --retry 3 --retry-delay 2 \
-	"$API/v1/servers/count?filters%5Bservers_technologies%5D%5Bidentifier%5D=$WG" \
+	-G "$API/v1/servers/count" \
+	--data-urlencode "filters[servers_technologies][identifier]=$WG" \
 	| jq -r '.count // empty')"
 [[ "$expected" =~ ^[0-9]+$ ]] || die "count endpoint did not return a number (API changed?)"
 [ "$expected" -gt 0 ] || die "count endpoint reports 0 servers"
@@ -49,7 +50,9 @@ say "    expected: $expected"
 # --- 2. fetch ---------------------------------------------------------------
 say '==> fetching server list'
 curl -sS --max-time 180 --retry 3 --retry-delay 5 \
-	"$API/v1/servers?filters%5Bservers_technologies%5D%5Bidentifier%5D=$WG&limit=$LIMIT" \
+	-G "$API/v1/servers" \
+	--data-urlencode "filters[servers_technologies][identifier]=$WG" \
+	--data-urlencode "limit=$LIMIT" \
 	-o "$tmp/raw.json" || die 'fetch failed'
 
 jq -e 'type == "array"' "$tmp/raw.json" >/dev/null 2>&1 \

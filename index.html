@@ -158,12 +158,17 @@
       <button type="button" id="copy-config" disabled>Copy</button>
       <button type="button" id="download" disabled>Download wg0.conf</button>
     </div>
-    <p class="warn" id="post-download">
-      The downloaded file contains your private key and lands in your Downloads
-      folder readable by any process running as you. Lock it down as you move it:
-      <code>sudo install -m 600 -o root ~/Downloads/wg0.conf /etc/wireguard/wg0.conf</code>
-      then <code>sudo wg-quick up wg0</code>.
-    </p>
+    <div class="warn" id="post-download">
+      <p>
+        The downloaded file contains your private key and lands in your Downloads
+        folder readable by any process running as you. Lock it down as you move it:
+      </p>
+      <div class="cmd">
+        <code id="install-cmd">sudo install -m 600 -o root -g root ~/Downloads/wg0.conf /etc/wireguard/wg0.conf
+sudo wg-quick up wg0</code>
+        <button type="button" data-copy="install-cmd">Copy</button>
+      </div>
+    </div>
   </section>
 
 </main>

@@ -18,7 +18,6 @@ const state = {
   meta: null,
   country: null,     // ISO code, or null for "any"
   server: null,
-  key: '',
 };
 
 /* ---------------------------------------------------------- preferences -- */
@@ -133,7 +132,7 @@ function preselectFromLocale() {
   const tags = navigator.languages && navigator.languages.length
     ? navigator.languages : [navigator.language || ''];
   for (const tag of tags) {
-    const region = (tag.split('-')[1] || '').toUpperCase();
+    const region = new Intl.Locale(tag).region;
     const hit = state.countries.find((c) => c.c === region);
     if (hit) { selectCountry(hit, false); return; }
   }
@@ -304,7 +303,7 @@ function renderServers() {
 
 function validKey(k) {
   // WireGuard keys are 32 bytes base64 -> 44 chars ending in '='.
-  return /^[A-Za-z0-9+/]{42}[AEIMQUYcgkosw]=$/.test(k);
+  return /^[A-Za-z0-9+/]{42}[AEIMQUYcgkosw048]=$/.test(k);
 }
 
 function build() {
@@ -366,7 +365,7 @@ async function copyText(text, btn) {
   } catch {
     btn.textContent = 'Press Ctrl+C';
   }
-  setTimeout(() => { btn.textContent = label; }, 1500);
+  setTimeout(() => { if (btn.textContent === 'Copied') btn.textContent = label; }, 1500);
 }
 
 document.addEventListener('DOMContentLoaded', () => {

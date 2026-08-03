@@ -158,7 +158,10 @@ input[type=text]:focus, input[type=password]:focus {
   background: var(--panel2); border: 1px solid var(--line);
   border-radius: 6px; padding: .6rem .7rem; margin-bottom: 1rem;
 }
-.cmd code { font-family: var(--mono); font-size: .82rem; word-break: break-all; flex: 1; }
+.cmd code {
+  font-family: var(--mono); font-size: .82rem; word-break: break-all; flex: 1;
+  white-space: break-spaces;
+}
 
 .config {
   background: var(--panel2);
