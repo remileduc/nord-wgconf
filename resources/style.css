@@ -16,7 +16,7 @@
   :root {
     --bg: #f4f6fa; --panel: #fff; --panel2: #eef1f7; --line: #d6dbe6;
     --fg: #1a1d26; --dim: #5b6479; --accent: #0b62d0;
-    --ok: #1a7f4b; --bad: #b3301c; --warn: #8a6100;
+    --ok: #1a7f4b; --bad: #d82b10; --warn: #8a6100;
   }
 }
 
@@ -79,6 +79,8 @@ input[type=text]:focus, input[type=password]:focus {
   outline-offset: -1px;
 }
 #privkey { font-family: var(--mono); padding-right: 4rem; }
+#privkey.bad { border-color: var(--bad); }
+#privkey.bad:focus { outline-color: var(--bad); }
 
 .reveal {
   position: absolute; right: .35rem; top: 1.9rem;

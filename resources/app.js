@@ -307,19 +307,31 @@ function validKey(k) {
 }
 
 function build() {
-  const key = document.getElementById('privkey').value.trim();
+  const keyElt = document.getElementById('privkey');
+  let key = keyElt.value.trim();
   const hint = document.getElementById('key-hint');
-  if (!key) hint.textContent = '';
-  else if (validKey(key)) hint.textContent = '✓ looks like a valid key';
-  else hint.textContent = '⚠ that does not look like a 44-character WireGuard key';
-  hint.className = 'hint ' + (!key ? '' : validKey(key) ? 'ok' : 'bad');
+
+  const keyIsValid = validKey(key);
+  const keyIsBad = key.length!== 0 && !keyIsValid;
+  const msg = !key ? ''
+    : keyIsValid ? '✓ looks like a valid key'
+    : '⚠ that does not look like a 44-character WireGuard key';
+  // build() runs on every keystroke; rewriting an unchanged live region makes
+  // screen readers re-announce it.
+  if (hint.textContent !== msg) hint.textContent = msg;
+  hint.className = 'hint ' + (!key ? '' : keyIsValid ? 'ok' : 'bad');
+  keyElt.classList.toggle('bad', keyIsBad);
+  keyElt.setAttribute('aria-invalid', String(keyIsBad));
 
   const out = document.getElementById('config');
   const copyBtn = document.getElementById('copy-config');
   const downloadBtn = document.getElementById('download');
 
-  if (!state.server || !key) {
-    out.textContent = 'Choose a server and paste your private key.';
+  if (!key)
+    key = '<PRIVATE_KEY> # This needs to be replaced with your private key';
+
+  if (!state.server) {
+    out.textContent = 'Choose a server.';
     copyBtn.disabled = true;
     downloadBtn.disabled = true;
     return;

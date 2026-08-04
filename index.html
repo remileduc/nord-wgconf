@@ -84,17 +84,14 @@
       The key it returns is 44 characters and ends with <code>=</code>.
     </p>
 
-    <!-- A real <form> with a real submit button. Browsers only offer to save a
-         credential on a form-submission event, so a bare <input> in a <div> is
-         never captured no matter what autocomplete says. The submit handler
-         calls preventDefault(), which stops the navigation but not the capture. -->
     <form id="key-form">
       <div class="field">
         <label for="privkey">Private key</label>
         <input id="privkey" name="privkey" type="password" autocomplete="current-password"
-               spellcheck="false" placeholder="44-character base64 key">
+               spellcheck="false" placeholder="44-character base64 key"
+               aria-describedby="key-hint" aria-invalid="false">
         <button type="button" id="reveal" class="reveal">Show</button>
-        <p class="hint" id="key-hint"></p>
+        <p class="hint" id="key-hint" aria-live="polite"></p>
       </div>
 
       <div class="key-actions">
@@ -153,15 +150,16 @@
   <!-- ---------- step 4: output ---------- -->
   <section>
     <h2><span class="step">4</span> Your configuration</h2>
-    <pre id="config" class="config" aria-live="polite">Choose a server and paste your private key.</pre>
+    <pre id="config" class="config" aria-live="polite">Choose a server.</pre>
     <div class="actions">
       <button type="button" id="copy-config" disabled>Copy</button>
       <button type="button" id="download" disabled>Download wg0.conf</button>
     </div>
     <div class="warn" id="post-download">
       <p>
-        The downloaded file contains your private key and lands in your Downloads
-        folder readable by any process running as you. Lock it down as you move it:
+        The downloaded file may contain your private key and lands in your
+        Downloads folder readable by any process running as you. Lock it down
+        as you move it:
       </p>
       <div class="cmd">
         <code id="install-cmd">sudo install -m 600 -o root -g root ~/Downloads/wg0.conf /etc/wireguard/wg0.conf
