@@ -17,7 +17,12 @@ set -euo pipefail
 
 API='https://api.nordvpn.com'
 WG='wireguard_udp'
-# One call returns everything: 8559 servers as of writing, and limit=10000
+# Only what a plain subscription can reach: dedicated IP is a paid add-on,
+# double VPN and onion need more than our single-hop config. Repeating this
+# filter ANDs, so ask for legacy_standard alone -- every legacy_p2p server is
+# also legacy_standard, which §2 verifies.
+GROUP='legacy_standard'
+# One call returns everything: 7327 servers as of writing, and limit=10000
 # returns all of them. If Nord ever exceeds this, the sanity check below fails
 # loudly rather than silently shipping a truncated list.
 LIMIT=10000
@@ -39,12 +44,16 @@ trap 'rm -rf "$tmp"' EXIT
 # --- 1. how many should we get? -------------------------------------------
 # Ask first, so we can tell "the API returned fewer" from "our limit truncated".
 say '==> asking how many WireGuard servers exist'
-expected="$(curl -sS --max-time 30 --retry 3 --retry-delay 2 \
-	-G "$API/v1/servers/count" \
-	--data-urlencode "filters[servers_technologies][identifier]=$WG" \
-	| jq -r '.count // empty')"
+count_group() {
+	curl -sS --max-time 30 --retry 3 --retry-delay 2 \
+		-G "$API/v1/servers/count" \
+		--data-urlencode "filters[servers_technologies][identifier]=$WG" \
+		--data-urlencode "filters[servers_groups][identifier]=$1" \
+		| jq -r '.count // empty'
+}
+expected="$(count_group "$GROUP")"
 [[ "$expected" =~ ^[0-9]+$ ]] || die "count endpoint did not return a number (API changed?)"
-[ "$expected" -gt 0 ] || die "count endpoint reports 0 servers"
+[ "$expected" -gt 0 ] || die "count endpoint reports 0 servers in $GROUP"
 say "    expected: $expected"
 
 # --- 2. fetch ---------------------------------------------------------------
@@ -52,6 +61,7 @@ say '==> fetching server list'
 curl -sS --max-time 180 --retry 3 --retry-delay 5 \
 	-G "$API/v1/servers" \
 	--data-urlencode "filters[servers_technologies][identifier]=$WG" \
+	--data-urlencode "filters[servers_groups][identifier]=$GROUP" \
 	--data-urlencode "limit=$LIMIT" \
 	-o "$tmp/raw.json" || die 'fetch failed'
 
@@ -71,9 +81,33 @@ if [ "$got" -ge "$LIMIT" ]; then
 	die "hit the limit of $LIMIT; raise LIMIT or add pagination"
 fi
 
+# A retired group identifier is ignored, not rejected: the response is then the
+# whole fleet, and every count check above still agrees with itself.
+off="$(jq --arg g "$GROUP" '[ .[] | select(([ .groups[].identifier ] | index($g)) == null) ] | length' "$tmp/raw.json")"
+[ "$off" -eq 0 ] \
+	|| die "$off of $got servers are not in $GROUP -- the group filter was ignored (group retired?)"
+
+# $GROUP covers every p2p server only while p2p stays a subset of it. Counted
+# after the fetch so churn during those minutes does not read as a break.
+expected_p2p="$(count_group legacy_p2p)"
+[[ "$expected_p2p" =~ ^[0-9]+$ ]] || die "count endpoint did not return a number for legacy_p2p"
+[ "$expected_p2p" -gt 0 ] || die "count endpoint reports 0 servers in legacy_p2p"
+got_p2p="$(jq '[ .[] | select([.groups[].identifier] | index("legacy_p2p")) ] | length' "$tmp/raw.json")"
+say "    p2p:      $got_p2p of $expected_p2p"
+# Only a shortfall is a break; a surplus is the race.
+if [ "$got_p2p" -lt "$expected_p2p" ]; then
+	die "$GROUP contains $got_p2p p2p servers but the API reports $expected_p2p; p2p is no longer a subset of $GROUP -- fetch it separately and merge"
+fi
+
+# Groups are capabilities, not constraints: a server in $GROUP is reachable the
+# standard way whatever else it carries, so extras are kept. Only worth a note --
+# today it never fires, and if it starts to, someone should look at why.
+extra="$(jq --arg g "$GROUP" '[ .[] | select(([ .groups[] | select(.type.identifier == "legacy_group_category") | .identifier ] - [$g, "legacy_p2p"]) != []) ] | length' "$tmp/raw.json")"
+[ "$extra" -eq 0 ] || say "    note: $extra server(s) also in a group beyond standard/p2p -- kept"
+
 # --- 3. trim ----------------------------------------------------------------
-# Only the fields the page needs. Full response is ~30 MB; this is ~1 MB, which
-# GitHub Pages serves gzipped at roughly 91 KB.
+# Only the fields the page needs. Full response is ~29 MB; this is ~0.9 MB, which
+# GitHub Pages serves gzipped at roughly 68 KB.
 #
 #   h = hostname          s = station (endpoint IP -- what goes in Endpoint=)
 #   k = server public key  c = ISO country code     n = city

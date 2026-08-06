@@ -132,10 +132,19 @@ breaking both the no-dependencies rule and the promise below that the only
 `fetch()` calls are same-origin.
 
 ```
-data/servers.json     8,558 servers, ~1.1 MB (~68 KB gzipped)
+data/servers.json     7,326 servers, ~0.9 MB (~68 KB gzipped)
 data/countries.json   149 countries, derived from servers.json
 data/meta.json        snapshot timestamp and counts
 ```
+
+**Only servers in the `legacy_standard` group are kept.** NordVPN sorts its
+WireGuard fleet into groups, and the other three are dead ends for a config like
+this one: `legacy_dedicated_ip` (1,519 servers) needs a paid add-on that a normal
+account's key will not authenticate against, and `legacy_double_vpn` (144) plus
+`legacy_onion_over_vpn` (5) are multi-hop, which a single `[Peer]` cannot do.
+Offering them would produce a config that looks fine and never handshakes. The
+P2P checkbox filters *within* this set — every `legacy_p2p` server is also
+`legacy_standard`. No country is lost by the narrowing.
 
 Trimmed record shape:
 
@@ -154,14 +163,14 @@ random** from your filtered selection; reload for a different five. Ranking by
 name instead would hand every visitor the same five and pile them onto those.
 
 Endpoint IPs and public keys change slowly — there are only ~224 distinct public
-keys across all 8,558 servers — so a stale snapshot is unlikely to break a
+keys across all 7,326 servers — so a stale snapshot is unlikely to break a
 config. If it does, the symptom is a tunnel that comes up and never handshakes.
 
 For a genuinely live pick, straight from NordVPN with current load and their own
 proximity scoring:
 
 ```bash
-curl -s 'https://api.nordvpn.com/v1/servers/recommendations?filters%5Bservers_technologies%5D%5Bidentifier%5D=wireguard_udp&limit=5' \
+curl -s 'https://api.nordvpn.com/v1/servers/recommendations?filters%5Bservers_technologies%5D%5Bidentifier%5D=wireguard_udp&filters%5Bservers_groups%5D%5Bidentifier%5D=legacy_standard&limit=5' \
   | jq -r '.[] | "\(.hostname)  \(.station)  load=\(.load)"'
 ```
 
