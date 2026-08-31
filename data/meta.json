@@ -1,6 +1,6 @@
 {
-  "generated_at": "2026-08-24T04:59:25Z",
-  "servers": 6617,
+  "generated_at": "2026-08-31T10:49:10Z",
+  "servers": 6390,
   "countries": 149,
   "source": "https://api.nordvpn.com/v1/servers"
 }
